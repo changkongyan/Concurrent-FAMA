@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-01
+ * Last Modified:  2019-06-03
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -29,33 +29,17 @@ bool AscendingOrder(const struct Packet &a ,const struct Packet &b){
     return a.rx_start < b.rx_start;
 }
 uint32_t PushPacket(const struct Packet &pac){
-    // struct Packet packet;
-    // packet.id   =pac.id;
-    // packet.from =pac.from;
-    // packet.to   =pac.to;
-    // packet.type =pac.type;
-    // packet.state=pac.state;
-    // packet.retransfer_number=pac.retransfer_number;
-    // packet.transmission=pac.transmission;
-    // packet.arrive=pac.arrive;
-    // packet.tx_start=pac.tx_start;
-    // packet.tx_end=pac.tx_end;
-    // packet.delay =neighbor_node[pac.from][node_number].neighbor_distance/propagate_speed;
-    // packet.rx_start=packet.tx_start+packet.delay;
-    // packet.rx_end=packet.rx_start+packet.transmission;
-    // packet.energy=propagate_power*packet.transmission;
     rxpacketVector[pac.to].push_back(pac);
     std::sort(rxpacketVector[pac.to].begin(),rxpacketVector[pac.to].end(),AscendingOrder);
-    
-    #ifdef MY_DEBUG
-    for(int j=0 ; j < rxpacketVector[pac.to].size() ; j++){
-        std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
-        <<"from="<<rxpacketVector[pac.to][j].from<<"\t"
-        <<"to="<<rxpacketVector[pac.to][j].to<<"\t"
-        <<"rx_start="<<rxpacketVector[pac.to][j].rx_start<<"\t"
-        <<"rx_end="<<rxpacketVector[pac.to][j].rx_end<<std::endl;
-    }
-    #endif
+    // #ifdef MY_DEBUG
+    //     for(int j=0 ; j < rxpacketVector[pac.to].size() ; j++){
+    //         std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+    //         <<"from="<<rxpacketVector[pac.to][j].from<<"\t"
+    //         <<"to="<<rxpacketVector[pac.to][j].to<<"\t"
+    //         <<"rx_start="<<rxpacketVector[pac.to][j].rx_start<<"\t"
+    //         <<"rx_end="<<rxpacketVector[pac.to][j].rx_end<<std::endl;
+    //     }
+    // #endif
     return EXIT_SUCCESS;
 }
 std::string GetPacketState(const struct Packet &pac){

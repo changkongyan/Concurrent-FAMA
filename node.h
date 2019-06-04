@@ -9,7 +9,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-01
+ * Last Modified:  2019-06-03
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -20,6 +20,7 @@
 #include "channel.h"
 #include "mac.h"
 #include <stdint.h>
+#include <string>
 
 
 // 定义水声节点属性
@@ -82,11 +83,9 @@ public:
 
 
     uint32_t   work_state_;      ///< 节点当前所处状态
-    // uint32_t   channel_state_;   ///< 信道状态
     uint32_t   next_work_state_; ///< 节点下一个工作状态
     uint32_t   timer_;           ///< 定时器开关状态
     uint32_t   timer_state_;     ///< 定时器状态
-    double     time_out_;        ///< ACK超时时间
 public:
     /**
      * @brief Construct a new Node object
@@ -97,7 +96,14 @@ public:
     Node();
     virtual ~Node();
 
-    
+
+    /**
+     * @brief 返回节点状态描述
+     * 
+     * @param state  节点工作状态
+     * @return std::string 节点状态描述
+     */
+    static std::string GetWorkState(const uint32_t &state);
     /**
      * @brief 初始化发送的数据包
      * 

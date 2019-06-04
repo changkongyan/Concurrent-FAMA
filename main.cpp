@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-01
+ * Last Modified:  2019-06-03
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -23,7 +23,7 @@
 #include <iomanip>
 
 
-const char short_options[] = "n:s:t:r:S:R:p:P:e:j:m:o:y:a:l:X:Y:c:h";
+const char short_options[] = "n:s:t:r:S:R:p:P:e:j:m:o:C:y:a:l:X:Y:c:h";
 const struct option long_options[] = { 
     {"number", required_argument, NULL, 'n' },
 {"simulation", required_argument, NULL, 's' },
@@ -37,6 +37,7 @@ const struct option long_options[] = {
     {"jitter", required_argument, NULL, 'j' },
 {"max_retransfer", required_argument, NULL, 'm' },
     { "slot",  required_argument, NULL, 'o' },
+    {"CW",   required_argument, NULL,  'C' },
 {"physical",   required_argument, NULL, 'y' },
     { "mac",   required_argument, NULL, 'a' },
 { "payload",   required_argument, NULL, 'l' },
@@ -62,6 +63,7 @@ void usage(FILE * fp, int argc, char ** argv)
         "-j | --jitter     propagate speed jitter\n"
         "-m | --max_retransfer  the maximum times of retransmission\n"
         "-o | --slot       time unit of the mac \n"
+        "-C | --CW         the value of backoff window\n"
         "-y | --physical   the header of physical\n"
         "-a | --mac        the header of mac\n"
         "-l | --payload    the length of data\n"
@@ -86,7 +88,6 @@ int main(int argc , char* argv[])
     propagate_error   = 0;              // 传播误码率
     propagate_speed_jitter=50/1000.0;   // 传播速度变化 50 m/s
 
-    
     Rts=150;        // RTS帧
     Cts=300;        // CTS帧
     Ack=14*8;       // 应答帧 
@@ -96,16 +97,13 @@ int main(int argc , char* argv[])
    
     reTx_max=2;     // 最大重发次数
     slot=propagate_range/propagate_speed+Cts/transmission_rate;// 最小时隙单元 0.2s
-    cw_min=10;      // 最小退避窗口
+    cw_min=7;      // 最小退避窗口
     cw_max=1023;    // 最大退避窗口 
    
-  
-    
     node_number =1;                 // 仿真的节点个数
-    simulation_time=600*1000.0;     // 仿真时间
+    simulation_time=1200*1000.0;     // 仿真时间
     time_unit=slot;                 // 仿真运行基本时间单元 ms
     
-
     energy_consumption=0;// 总能耗
     average_energy_consumption=0; // 能耗
     total_packets=0;     // 总的发包个数
@@ -203,6 +201,9 @@ int main(int argc , char* argv[])
         case 'o':
             slot =atof(optarg)*1000.0;//毫秒为基本单位
             break;
+        case 'C':
+            cw_min =atol(optarg);
+            break;
         case 'y':
             Physical =atol(optarg);
             break;
@@ -235,7 +236,8 @@ int main(int argc , char* argv[])
     
     printf("\nResult:\n\t total_packets=%d packets=%d drop_packets=%d energy_consumption=%lf\n",total_packets,packets,drop_packets,energy_consumption);
     packet_loss_rate=1.0*drop_packets/total_packets;          //丢包率
-    throughput=packets*Payload*1000.0/simulation_time;        //总吞吐量
+    // throughput=packets*Payload*1000.0/simulation_time;        //总吞吐量
+    throughput=(packets*Payload/transmission_rate)/simulation_time;        //总吞吐量
     average_energy_consumption=energy_consumption/node_number;//节点平均能耗
     
     char s[100];sprintf(s,"%d nodes of simulator result.txt",node_number);

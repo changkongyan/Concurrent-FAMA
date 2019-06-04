@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-01
+ * Last Modified:  2019-06-04
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -56,7 +56,8 @@ int CreateNodes(){
     
     // 随机数生成
     e.seed(time(NULL));
-    srand(e());
+    e();
+    srand(time(NULL)+e());
     std::uniform_int_distribution<> location(0,(uint32_t)propagate_range);
     double x,y;
     struct NodeLocation node_location;
@@ -161,7 +162,7 @@ double SimulatorRun(double simulation_time){
         std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"<<"所有节点发送的数据包集合占用的空间大小 "<<txpacketVector.capacity()<<std::endl;
         std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"<<"所有节点缓存的数据包集合占用的空间大小 "<<cachepacketVector.capacity()<<std::endl;
     #endif
-    
+
     uint32_t send_num=0;         //发送rts的节点个数
     std::vector<int> send_index; //哪些节点在发送数据
 	std::vector<int>::iterator iterVector;
@@ -179,7 +180,7 @@ double SimulatorRun(double simulation_time){
                 std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
                 <<(send_num==rxpacketVector[node_number].size()?
                 "send_num等于rxpacketVector[node_number].size()":"send_num不等于rxpacketVector[node_number].size()")
-                <<"   send_num="<<send_num<<std::endl;
+                <<"\t其中send_num="<<send_num<<std::endl;
             #endif
             for(uint32_t i=0; i <  rxpacketVector[node_number].size() ; i++){
                 if( i+1 < rxpacketVector[node_number].size() ){
@@ -191,8 +192,18 @@ double SimulatorRun(double simulation_time){
             }
             if(send_num==0){
                 for(uint32_t j=0; j <  rxpacketVector[node_number].size() ; j++){
+                    
                     node[rxpacketVector[node_number][j].from].work_state_=CollsionState;
-                    node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+2*slot,IdleState);
+                    
+                    send_index.push_back(rxpacketVector[node_number][j].from);
+                    node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+slot,IdleState);
+                    // node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+2*slot,IdleState);
+                    
+                    int size=txpacketVector[rxpacketVector[node_number][j].from].size()-1;
+                    if(size>=0){
+                        txpacketVector[rxpacketVector[node_number][j].from][size].description="RTS冲突";
+                    }
+                    
                     //todo 
                     // 窗口问题
                     // if( node[rxpacketVector[node_number][j].from].cw_ < cw_max){
@@ -201,12 +212,25 @@ double SimulatorRun(double simulation_time){
                     // {
 					// 	node[rxpacketVector[node_number][j].from].cw_ = cw_min;
                     // }
-                    //数据的问题
-                    node[rxpacketVector[node_number][j].from].tx_packet.retransfer_number++;
-                    if(node[rxpacketVector[node_number][j].from].tx_packet.retransfer_number>reTx_max){
-                        node[rxpacketVector[node_number][j].from].drop_counter_++;
-                        node[rxpacketVector[node_number][j].from].InitData(bus_clock+slot);
+
+                    //数据问题 
+                    node[rxpacketVector[node_number][j].from].tx_packet.state=Fail;
+                    #ifdef MY_DEBUG
+                        std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                        <<"RTS冲突"
+                        <<"id="<<node[rxpacketVector[node_number][j].from].tx_packet.id
+                        <<" retransfer_number="<< node[rxpacketVector[node_number][j].from].tx_packet.retransfer_number
+                        <<std::endl;
+                    #endif
+                    if(node[rxpacketVector[node_number][j].from].tx_packet.retransfer_number >= reTx_max){ 
+                        #ifdef MY_DEBUG
+                            std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                            <<"抛弃的包的id"<<node[rxpacketVector[node_number][j].from].tx_packet.id
+                            <<std::endl;
+                        #endif
+                        node[rxpacketVector[node_number][j].from].drop_counter_++; //记录节点抛弃包的个数
                     }
+                    
                 }
             }else
             {
@@ -217,29 +241,25 @@ double SimulatorRun(double simulation_time){
                 #endif
                 for(uint32_t j=0; j <  rxpacketVector[node_number].size() ; j++){
                     #ifdef MY_DEBUG
-                        std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"<<"j="<<j<<"rxpacketVector[node_number][j].from"<<rxpacketVector[node_number][j].from<<std::endl;
+                        std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                        <<"节点"<<rxpacketVector[node_number][j].from<<"第"<<j+1<<"个发送数据"<<std::endl;
                     #endif
                     send_index.push_back(rxpacketVector[node_number][j].from);
                     node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+duration,IdleState);
-                    //todo 
-                    //添加发送的数据
-                    if(j<=0){
+                    node[rxpacketVector[node_number][j].from].tx_packet.state=Success;//发送成功后，方便重新初始化数据   
+                    if(j==0){
                         node[rxpacketVector[node_number][j].from].SendData(bus_clock+2*slot);
                     }else
                     {
                         node[rxpacketVector[node_number][j].from].SendData(node[rxpacketVector[node_number][j-1].from].tx_packet.rx_end-
                                 node[rxpacketVector[node_number][j].from].tx_packet.delay);
                     }
-                    
                 }
             }
 
-
             channel_state=Busy;
-
         }
-            
-            
+                
         if(!send_index.empty() && channel_state==Busy){
 			for(iterVector=send_index.begin();iterVector!=send_index.end();){
 				if(node[*iterVector].work_state_==IdleState){
@@ -256,20 +276,34 @@ double SimulatorRun(double simulation_time){
 			}
 		}
 
-        // printf("timer_=%d channel_state=%d work_state_=%d bus_clock=%f cw_counter_=%d cw_=%d\n",
-        //     node[0].timer_,channel_state,node[0].work_state_,node[0].current_time_,node[0].cw_counter_,node[0].cw_);
-
-        printf("\rcurrent progress:%.2lf%%",bus_clock/simulation_time*100);//显示执行进度
+        #ifdef MY_DEBUG       
+            // for(uint32_t i=0;i<node_number;i++){
+            //     printf("id=%d\ttimer_=%d\tchannel_state=%d\twork_state_=%d\tbus_clock=%f\tcw_counter_=%d\tcw_=%d\n",i,
+            //         node[i].timer_,channel_state,node[i].work_state_,node[i].current_time_,node[i].cw_counter_,node[i].cw_);
+            // }
+            for(uint32_t i=0;i<node_number;i++){
+                std::cout<<"节点id="<<i <<"  运行时刻："<<bus_clock<<"ms"
+                            <<"  定时器："<<(node[i].timer_==Off?"关闭":"开启")
+                            <<"  信道："<<(channel_state==Busy?"忙碌":"空闲")
+                            <<"  节点状态："<<Node::GetWorkState(node[i].work_state_)
+                            <<"  节点计数器："<<node[i].cw_counter_<<"  退避窗口："<<node[i].cw_<<std::endl;
+            }
+        #else
+            printf("\rcurrent progress:%.2lf%%",bus_clock/simulation_time*100);//显示执行进度
+        #endif
     }
-
+    #ifndef MY_DEBUG  
+        printf("\rcurrent progress:%.2lf%%",simulation_time/simulation_time*100);//显示执行进度
+    #endif
+    
     // 统计数据
     for(uint32_t i=0; i< node_number; i++){
-        // total_packets+=node[i].send_counter_;
         packets+=node[i].packet_counter_;
         drop_packets+=node[i].drop_counter_;
         energy_consumption+=node[i].send_energy_;
     }
     total_packets+=packets+drop_packets;
+    //这里我们设置接收功率和空闲功率都为80mw，发送功率为10w
     energy_consumption=energy_consumption*propagate_power+(simulation_time-energy_consumption)*receive_power;
     
     // 输出日志
