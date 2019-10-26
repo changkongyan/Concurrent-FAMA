@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-03
+ * Last Modified:  2019-07-02
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -23,11 +23,12 @@
 #include <iomanip>
 
 
-const char short_options[] = "n:s:t:r:S:R:p:P:e:j:m:o:C:y:a:l:X:Y:c:h";
+const char short_options[] = "n:s:t:N:r:S:R:p:P:e:j:m:o:C:y:a:l:X:Y:c:h";
 const struct option long_options[] = { 
     {"number", required_argument, NULL, 'n' },
 {"simulation", required_argument, NULL, 's' },
     { "time" , required_argument, NULL, 't' },
+    {"numbers",required_argument, NULL, 'N' },
     { "rate" , required_argument, NULL, 'r' },
     { "speed", required_argument, NULL, 'S' },
     { "range" , required_argument, NULL,'R' },
@@ -54,6 +55,7 @@ void usage(FILE * fp, int argc, char ** argv)
         "-n | --number     number of nodes\n"
         "-s | --simulation time of simulation\n"
         "-t | --time       time uint of simulation(second)\n"
+        "-N | --numbers    number of topology that is simulated\n"
         "-r | --rate       transmission rate\n"
         "-S | --speed      propagate speed\n"
         "-R | --range      propagate range\n"
@@ -80,6 +82,7 @@ int main(int argc , char* argv[])
      * 这是因为计算机认为相差级别小于10^-5的数相等
      * 如果以秒为基本单位，则对DCF协议的仿真(微妙级别的仿真)产生重大影响
      */
+    channel_state     = Idel;           // 信道状态  空闲
     transmission_rate = 3000/1000.0;    // 传输速率  3  kb/s
     propagate_speed   = 1500/1000.0;    // 传播速度  1500 m/s
     propagate_range   = 1500;           // 传播范围  1500 m
@@ -101,8 +104,10 @@ int main(int argc , char* argv[])
     cw_max=1023;    // 最大退避窗口 
    
     node_number =1;                 // 仿真的节点个数
-    simulation_time=1200*1000.0;     // 仿真时间
+    simulation_time=1200*1000.0;    // 仿真时间
     time_unit=slot;                 // 仿真运行基本时间单元 ms
+    topology_number=60;             // 拓扑个数
+
     
     energy_consumption=0;// 总能耗
     average_energy_consumption=0; // 能耗
@@ -174,6 +179,9 @@ int main(int argc , char* argv[])
 		case 't':
             time_unit=atof(optarg)*1000.0;        //毫秒为基本单位
 			break;
+        case 'N':
+            topology_number=atol(optarg);
+            break;
 		case 'r':
             transmission_rate=atof(optarg)/1000.0;//毫秒为基本单位
 			break;
@@ -231,27 +239,142 @@ int main(int argc , char* argv[])
 		}
 	}
 
-    CreateNodes();
-    SimulatorRun(simulation_time);
+    // e.seed(time(NULL));
+    // e();
+    srand(time(NULL)+e());
+    for(int nums=0; nums<topology_number; nums++ ){
+        CreateNodes();
+
+        int times=2; //每个拓扑仿真三次
+        for(int num=0; num<times; num++){
+            
+            SimulatorRun(simulation_time);
+            
+            char s[100];sprintf(s,"%d nodes of simulator.txt",node_number);
+            std::ofstream out;
+            out.setf(std::ios::fixed | std::ios::left);
+            out.open(s, std::ios::app);
+            out<<"################################"<<"第"<<num+1<<"次仿真结果"<<"################################"<<std::endl;
+            if(out.is_open()){
+                for(uint32_t i=0;i<node_number;i++){
+                    out<<std::endl<<"*******************************************************************************************************"
+                    <<std::endl<<"节点"<<i<<"收到的数据包"<<std::endl;
+                    out<<std::setw(20)<<"数据包ID"
+                    <<std::setw(24)<<"  源节点"
+                    <<std::setw(22)<<"目的节点"
+                    <<std::setw(22)<<"数据类型"
+                    <<std::setw(22)<<"接收状态"
+                    <<std::setw(24)<<"重传次数"
+                    <<std::setw(22)<<"数据长度"
+                    <<std::setw(24)<<"数据到达"
+                    <<std::setw(22)<<"传播开始"
+                    <<std::setw(24)<<"传播结束"
+                    <<std::setw(22)<<"接收开始"
+                    <<std::setw(22)<<"接收结束"
+                    <<std::setw(24)<<"传播时延"
+                    <<std::setw(20)<<"传播能量"<<"数据包状态描述"<<std::endl;
+                    for(uint32_t j=0;j<rxpacketVector[i].size();j++){
+                        out<<std::setw(18)<<rxpacketVector[i][j].id
+                        <<std::setw(18)<<rxpacketVector[i][j].from
+                        <<std::setw(18)<<rxpacketVector[i][j].to
+                        <<std::setw(18)<<GetPacketType(rxpacketVector[i][j])
+                        <<std::setw(18)<<GetPacketState(rxpacketVector[i][j])
+                        <<std::setw(18)<<rxpacketVector[i][j].retransfer_number
+                        <<std::setw(18)<<rxpacketVector[i][j].transmission
+                        <<std::setw(18)<<rxpacketVector[i][j].arrive
+                        <<std::setw(18)<<rxpacketVector[i][j].tx_start
+                        <<std::setw(18)<<rxpacketVector[i][j].tx_end
+                        <<std::setw(18)<<rxpacketVector[i][j].rx_start
+                        <<std::setw(18)<<rxpacketVector[i][j].rx_end
+                        <<std::setw(18)<<rxpacketVector[i][j].delay
+                        <<std::setw(18)<<rxpacketVector[i][j].energy
+                        <<rxpacketVector[i][j].description<<std::endl;
+                    }
+                    out<<std::endl<<"节点"<<i<<"发送的数据包"<<std::endl;
+                    out<<std::setw(20)<<"数据包ID"
+                    <<std::setw(24)<<"  源节点"
+                    <<std::setw(22)<<"目的节点"
+                    <<std::setw(22)<<"数据类型"
+                    <<std::setw(22)<<"发送状态"
+                    <<std::setw(24)<<"重传次数"
+                    <<std::setw(22)<<"数据长度"
+                    <<std::setw(24)<<"数据到达"
+                    <<std::setw(22)<<"传播开始"
+                    <<std::setw(24)<<"传播结束"
+                    <<std::setw(22)<<"接收开始"
+                    <<std::setw(22)<<"接收结束"
+                    <<std::setw(24)<<"传播时延"
+                    <<std::setw(20)<<"传播能量"<<"数据包状态描述"<<std::endl;
+                    for(uint32_t j=0;j<txpacketVector[i].size();j++){
+                        out<<std::setw(18)<<txpacketVector[i][j].id
+                        <<std::setw(18)<<txpacketVector[i][j].from
+                        <<std::setw(18)<<txpacketVector[i][j].to
+                        <<std::setw(18)<<GetPacketType(txpacketVector[i][j])
+                        <<std::setw(18)<<GetPacketState(txpacketVector[i][j])
+                        <<std::setw(18)<<txpacketVector[i][j].retransfer_number
+                        <<std::setw(18)<<txpacketVector[i][j].transmission
+                        <<std::setw(18)<<txpacketVector[i][j].arrive
+                        <<std::setw(18)<<txpacketVector[i][j].tx_start
+                        <<std::setw(18)<<txpacketVector[i][j].tx_end
+                        <<std::setw(18)<<txpacketVector[i][j].rx_start
+                        <<std::setw(18)<<txpacketVector[i][j].rx_end
+                        <<std::setw(18)<<txpacketVector[i][j].delay
+                        <<std::setw(18)<<txpacketVector[i][j].energy
+                        <<txpacketVector[i][j].description<<std::endl;
+                    }
+                    out.flush();
+                }  
+                out.close();  
+            }
+            // 清除状态
+            std::vector<std::vector<struct Packet>> ().swap(cachepacketVector);
+            std::vector<std::vector<struct Packet>> ().swap(rxpacketVector);
+            std::vector<std::vector<struct Packet>> ().swap(txpacketVector);
+            channel_state=Idel;
+        }
     
-    printf("\nResult:\n\t total_packets=%d packets=%d drop_packets=%d energy_consumption=%lf\n",total_packets,packets,drop_packets,energy_consumption);
-    packet_loss_rate=1.0*drop_packets/total_packets;          //丢包率
-    // throughput=packets*Payload*1000.0/simulation_time;        //总吞吐量
-    throughput=(packets*Payload/transmission_rate)/simulation_time;        //总吞吐量
-    average_energy_consumption=energy_consumption/node_number;//节点平均能耗
-    
-    char s[100];sprintf(s,"%d nodes of simulator result.txt",node_number);
-    std::ofstream out;
-    out.setf(std::ios::fixed | std::ios::left);
-    out.open(s, std::ios::app);
-    if(out.is_open()){
-        out<<"仿真结果"<<std::endl<<std::endl;
-        out<<std::setw(18)<<"仿真时间"<<std::setw(18)<<"吞吐量"<<std::setw(18)<<"丢包率"<<std::setw(18)<<"平均能耗"<<std::endl;
-        out<<std::setw(13)<<simulation_time/1000.0
-        <<std::setw(15)<<std::setprecision(2)/* 保留两位小数*/<<throughput
-        <<std::setw(14)<<packet_loss_rate
-        <<std::setw(14)<<average_energy_consumption<<std::endl;
-        out.close();
+        packets/=times;
+        drop_packets/=times;
+        energy_consumption/=times;
+
+        
+        total_packets=packets+drop_packets;
+        //这里我们设置接收功率和空闲功率都为80mw，发送功率为10w
+        energy_consumption=energy_consumption*propagate_power+(simulation_time-energy_consumption)*receive_power;
+        
+        printf("Result:\n\t total_packets=%d packets=%d drop_packets=%d energy_consumption=%lf\n\n",total_packets,packets,drop_packets,energy_consumption);
+        packet_loss_rate=1.0*drop_packets/total_packets;               //丢包率
+        // throughput=packets*Payload*1000.0/simulation_time;          //吞吐量
+        throughput=(packets*Payload/transmission_rate)/simulation_time;//归一化吞吐量
+        average_energy_consumption=energy_consumption/node_number;     //节点平均能耗
+        
+        char s[100];sprintf(s,"%d nodes of simulator result.txt",node_number);
+        std::ofstream out;
+        out.setf(std::ios::fixed | std::ios::left);
+        out.open(s, std::ios::app);
+        if(out.is_open()){
+            out<<std::endl<<"第"<<nums+1<<"个拓扑仿真结果"<<std::endl;
+            out<<std::setw(18)<<"仿真时间"<<std::setw(18)<<"吞吐量"<<std::setw(18)<<"丢包率"<<std::setw(18)<<"平均能耗"<<std::endl;
+            out<<std::setw(13)<<simulation_time/1000.0
+            <<std::setw(15)<<std::setprecision(2)/* 保留两位小数*/<<throughput
+            <<std::setw(14)<<packet_loss_rate
+            <<std::setw(14)<<average_energy_consumption<<std::endl;;
+            out.close();
+        }
+
+        //清除状态
+        nodes.clear();         // 每个节点的位置
+        neighbor_node.clear(); // 邻居节点之间的距离
+        channel_state=Idel;
+        energy_consumption=0;// 总能耗
+        average_energy_consumption=0; // 能耗
+        total_packets=0;     // 总的发包个数
+        packets=0;           // 成功的个数
+        drop_packets=0;      // 丢包的个数
+        average_delay=0;     // 平均时延
+        throughput=0;        // 吞吐量
+        packet_loss_rate=0;  // 丢包率
     }
-	return throughput;
+
+	return EXIT_SUCCESS;
 }

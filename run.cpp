@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-04
+ * Last Modified:  2019-07-03
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -49,15 +49,15 @@ int CreateNodes(){
     <<std::setw(17)<<receive_power
     <<std::setw(17)<<propagate_error<<std::endl;
 
-    out<<std::endl<<std::endl<<"节点传输负载大小"<<std::endl;
+    out<<std::endl<<std::endl<<"节点传输负载大小(bit)"<<std::endl;
     out<<Payload<<std::endl;
     
     
     
     // 随机数生成
-    e.seed(time(NULL));
-    e();
-    srand(time(NULL)+e());
+    // e.seed(time(NULL));
+    // e();
+    // srand(time(NULL)+e());
     std::uniform_int_distribution<> location(0,(uint32_t)propagate_range);
     double x,y;
     struct NodeLocation node_location;
@@ -139,7 +139,7 @@ int CreateNodes(){
     return EXIT_SUCCESS;
 }
 
-double SimulatorRun(double simulation_time){
+int SimulatorRun(double simulation_time){
     Node node[node_number+1];
     #ifdef MY_DEBUG
         std::cout<<"节点的坐标"<<std::endl;
@@ -196,8 +196,8 @@ double SimulatorRun(double simulation_time){
                     node[rxpacketVector[node_number][j].from].work_state_=CollsionState;
                     
                     send_index.push_back(rxpacketVector[node_number][j].from);
-                    node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+slot,IdleState);
-                    // node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+2*slot,IdleState);
+                    // node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+slot,IdleState);
+                    node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+2*slot,IdleState);
                     
                     int size=txpacketVector[rxpacketVector[node_number][j].from].size()-1;
                     if(size>=0){
@@ -225,7 +225,7 @@ double SimulatorRun(double simulation_time){
                     if(node[rxpacketVector[node_number][j].from].tx_packet.retransfer_number >= reTx_max){ 
                         #ifdef MY_DEBUG
                             std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
-                            <<"抛弃的包的id"<<node[rxpacketVector[node_number][j].from].tx_packet.id
+                            <<"抛弃的包的id为"<<node[rxpacketVector[node_number][j].from].tx_packet.id
                             <<std::endl;
                         #endif
                         node[rxpacketVector[node_number][j].from].drop_counter_++; //记录节点抛弃包的个数
@@ -277,10 +277,6 @@ double SimulatorRun(double simulation_time){
 		}
 
         #ifdef MY_DEBUG       
-            // for(uint32_t i=0;i<node_number;i++){
-            //     printf("id=%d\ttimer_=%d\tchannel_state=%d\twork_state_=%d\tbus_clock=%f\tcw_counter_=%d\tcw_=%d\n",i,
-            //         node[i].timer_,channel_state,node[i].work_state_,node[i].current_time_,node[i].cw_counter_,node[i].cw_);
-            // }
             for(uint32_t i=0;i<node_number;i++){
                 std::cout<<"节点id="<<i <<"  运行时刻："<<bus_clock<<"ms"
                             <<"  定时器："<<(node[i].timer_==Off?"关闭":"开启")
@@ -297,91 +293,14 @@ double SimulatorRun(double simulation_time){
     #endif
     
     // 统计数据
+    // todo 
+    // extern double     average_delay;    // 平均时延
     for(uint32_t i=0; i< node_number; i++){
         packets+=node[i].packet_counter_;
         drop_packets+=node[i].drop_counter_;
         energy_consumption+=node[i].send_energy_;
     }
-    total_packets+=packets+drop_packets;
-    //这里我们设置接收功率和空闲功率都为80mw，发送功率为10w
-    energy_consumption=energy_consumption*propagate_power+(simulation_time-energy_consumption)*receive_power;
-    
-    // 输出日志
-    // extern double     average_delay;    // 平均时延
-    char s[100];sprintf(s,"%d nodes of simulator.txt",node_number);
-    std::ofstream out;
-    out.setf(std::ios::fixed | std::ios::left);
-    out.open(s, std::ios::app);
-    if(out.is_open()){
-        for(uint32_t i=0;i<node_number;i++){
-            out<<std::endl<<"*******************************************************************************************************"
-            <<std::endl<<"节点"<<i<<"收到的数据包"<<std::endl;
-            out<<std::setw(20)<<"数据包ID"
-            <<std::setw(24)<<"  源节点"
-            <<std::setw(22)<<"目的节点"
-            <<std::setw(22)<<"数据类型"
-            <<std::setw(22)<<"接收状态"
-            <<std::setw(24)<<"重传次数"
-            <<std::setw(22)<<"传输时延"
-            <<std::setw(24)<<"数据到达"
-            <<std::setw(22)<<"传播开始"
-            <<std::setw(24)<<"传播结束"
-            <<std::setw(22)<<"接收开始"
-            <<std::setw(22)<<"接收结束"
-            <<std::setw(24)<<"传播时延"
-            <<std::setw(20)<<"传播能量"<<"数据包状态描述"<<std::endl;
-            for(uint32_t j=0;j<rxpacketVector[i].size();j++){
-                out<<std::setw(18)<<rxpacketVector[i][j].id
-                <<std::setw(18)<<rxpacketVector[i][j].from
-                <<std::setw(18)<<rxpacketVector[i][j].to
-                <<std::setw(18)<<GetPacketType(rxpacketVector[i][j])
-                <<std::setw(18)<<GetPacketState(rxpacketVector[i][j])
-                <<std::setw(18)<<rxpacketVector[i][j].retransfer_number
-                <<std::setw(18)<<rxpacketVector[i][j].transmission
-                <<std::setw(18)<<rxpacketVector[i][j].arrive
-                <<std::setw(18)<<rxpacketVector[i][j].tx_start
-                <<std::setw(18)<<rxpacketVector[i][j].tx_end
-                <<std::setw(18)<<rxpacketVector[i][j].rx_start
-                <<std::setw(18)<<rxpacketVector[i][j].rx_end
-                <<std::setw(18)<<rxpacketVector[i][j].delay
-                <<std::setw(18)<<rxpacketVector[i][j].energy
-                <<rxpacketVector[i][j].description<<std::endl;
-            }
-            out<<std::endl<<"节点"<<i<<"发送的数据包"<<std::endl;
-            out<<std::setw(20)<<"数据包ID"
-            <<std::setw(24)<<"  源节点"
-            <<std::setw(22)<<"目的节点"
-            <<std::setw(22)<<"数据类型"
-            <<std::setw(22)<<"发送状态"
-            <<std::setw(24)<<"重传次数"
-            <<std::setw(22)<<"传输时延"
-            <<std::setw(24)<<"数据到达"
-            <<std::setw(22)<<"传播开始"
-            <<std::setw(24)<<"传播结束"
-            <<std::setw(22)<<"接收开始"
-            <<std::setw(22)<<"接收结束"
-            <<std::setw(24)<<"传播时延"
-            <<std::setw(20)<<"传播能量"<<"数据包状态描述"<<std::endl;
-            for(uint32_t j=0;j<txpacketVector[i].size();j++){
-                out<<std::setw(18)<<txpacketVector[i][j].id
-                <<std::setw(18)<<txpacketVector[i][j].from
-                <<std::setw(18)<<txpacketVector[i][j].to
-                <<std::setw(18)<<GetPacketType(txpacketVector[i][j])
-                <<std::setw(18)<<GetPacketState(txpacketVector[i][j])
-                <<std::setw(18)<<txpacketVector[i][j].retransfer_number
-                <<std::setw(18)<<txpacketVector[i][j].transmission
-                <<std::setw(18)<<txpacketVector[i][j].arrive
-                <<std::setw(18)<<txpacketVector[i][j].tx_start
-                <<std::setw(18)<<txpacketVector[i][j].tx_end
-                <<std::setw(18)<<txpacketVector[i][j].rx_start
-                <<std::setw(18)<<txpacketVector[i][j].rx_end
-                <<std::setw(18)<<txpacketVector[i][j].delay
-                <<std::setw(18)<<txpacketVector[i][j].energy
-                <<txpacketVector[i][j].description<<std::endl;
-            }
-            out.flush();
-        }  
-        out.close();
-    }
+    printf("\npackets=%d\tdrop_packets=%d\tenergy_consumption=%lf\n",packets,drop_packets,energy_consumption);
+
     return EXIT_SUCCESS;
 }

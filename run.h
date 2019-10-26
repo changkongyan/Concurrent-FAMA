@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-05-27
+ * Last Modified:  2019-06-14
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -33,7 +33,7 @@ int CreateNodes();
  * 
  * @return double 返回归一化吞吐量
  */
-double SimulatorRun(double simulation_time);
+int SimulatorRun(double simulation_time);
 
 #ifdef __cplusplus
 }

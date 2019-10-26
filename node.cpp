@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-04
+ * Last Modified:  2019-07-02
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -181,19 +181,15 @@ void Node::Timer(){
 			if(cw_counter_ > 0 ){
 				SetAlarm(current_time_+slot,BackOffState);
 			}else{
-				// SetAlarm(current_time_+slot,SendState);
 				next_work_state_=SendState;
 			}				
 		}
 		if(work_state_==IdleState && next_work_state_==BackOffState){
-			// srand(e()+time(NULL));
-			// cw_counter_ = ulrand() % cw_;
 			cw_counter_ = rand() % cw_;
 			if(cw_counter_  > 0 ){
 				SetAlarm(current_time_+slot);
 			}else
 			{
-				// SetAlarm(current_time_+slot,SendState);
 				next_work_state_=SendState;
 			}
 			#ifdef MY_DEBUG

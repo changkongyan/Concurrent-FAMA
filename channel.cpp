@@ -8,12 +8,12 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-05-31
+ * Last Modified:  2019-06-14
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
 #include "channel.h"
-uint32_t  channel_state=Idel;       // 信道状态
+uint32_t  channel_state=Idel;   // 信道状态
 double    transmission_rate;    // 传输速率
 double    propagate_speed;      // 传播速度
 double    propagate_range;      // 传播范围

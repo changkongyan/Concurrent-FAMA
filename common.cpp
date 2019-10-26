@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-06-03
+ * Last Modified:  2019-07-02
  * Modified By:    詹长建 (2233930937@qq.com)
  * 
  */
@@ -93,6 +93,7 @@ std::vector<std::vector<struct Packet>>          cachepacketVector;// 每个节�
 uint32_t  node_number;      // 仿真的节点个数
 double    simulation_time;  // 仿真时间
 double    time_unit;        // 仿真运行基本时间单元(以us为单位)
+uint32_t  topology_number;  // 仿真拓扑的个数
 
 uint32_t  total_packets;     // 总的发包个数
 uint32_t  packets;           // 成功的个数
