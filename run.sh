@@ -4,14 +4,18 @@ echo -e "执行仿真程序.....\n"
 if [ -x "./build/mfama.exe" ] && [  -e "./build/mfama.exe"  ] 
 then
     echo  -e "可以执行程序\n"
-    read  -p "请输入仿真节点个数、仿真窗口、仿真拓扑个数、仿真时间（s）:" node_number CW  topology_number simu_time
+    read  -p "请输入仿真节点个数、仿真窗口、负载、仿真拓扑个数、仿真时间（s）:" node_number CW payload topology_number simu_time
     if [ -z ${node_number} ] 
     then
-	    node_number=5
+	    node_number=20
     fi
     if  [ -z ${CW} ]  
     then
-        CW=4
+        CW=2
+    fi
+     if  [ -z ${payload} ]  
+    then
+        payload=3600
     fi
     if  [ -z ${simu_time} ] 
     then
@@ -22,27 +26,42 @@ then
         topology_number=50
     fi
 
-    # 对比不同仿真节点个数的归一化吞吐量
-    node_number=15
-    for i in `seq 5 ${node_number}`
-    do
-        echo -e "\n"${i}"个仿真节点"
-        ./build/mfama.exe -n ${i} -C ${CW} -s ${simu_time} -N ${topology_number}
-        cat "${i} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print "\n\n"'${i}'"个节点的吞吐量: "sum/'${topology_number}' >>"simulator results of '${node_number}' nodes.txt"}' 
-        # rm  "${i} nodes of simulator result.txt"
-        # rm  "${i} nodes of simulator.txt"
-    done
+    # # 对比不同仿真节点个数的归一化吞吐量
+    # for i in `seq 2 ${node_number}`
+    # do
+    #     echo -e "\n"${i}"个仿真节点"
+    #     ./build/mfama.exe -n ${i} -C ${CW} -s ${simu_time} -N ${topology_number}
+    #     # cat "${i} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print "\n\n"'${i}'"个节点的吞吐量: "sum/'${topology_number}' >>"simulator results of '${node_number}' nodes.txt"}' 
+    #     cat "${i} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print sum/'${topology_number}' >>"simulator results of '${node_number}' nodes.txt"}' 
+    #     # rm  "${i} nodes of simulator result.txt"
+    #     # rm  "${i} nodes of simulator.txt"
+    #     # rm  "${i} nodes of simulator result.txt"
+    #     # rm  "${i} nodes of simulator.txt"
+    # done
 
-    # 对比不同窗口的归一化吞吐量
-    # CW=10
+    # # 对比不同窗口的归一化吞吐量
     # for i in `seq 2 ${CW}`
     # do
     #     echo -e "\n"${node_number}"个仿真节点"
-    #     ./build/mfama.exe -n ${node_number} -C ${i} -s ${simu_time} -N ${topology_number}
-    #     cat "${node_number} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print "\n\n"'${i}'"个窗口的吞吐量: "sum/'${topology_number}' >> "simulator results of '${node_number}' nodes CW.txt"}' 
+    #     ./build/mfama.exe -n ${node_number} -C ${i} -s ${simu_time} -N ${topology_number} -m 2
+    #     # cat "${node_number} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print "\n\n"'${i}'"个窗口的吞吐量: "sum/'${topology_number}' >> "simulator results of '${node_number}' nodes CW.txt"}' 
+    #     cat "${node_number} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print sum/'${topology_number}' >> "simulator results of '${node_number}' nodes CW.txt"}' 
     #     rm  "${node_number} nodes of simulator result.txt"
     #     rm  "${node_number} nodes of simulator.txt"
     # done
+
+
+    # 对比不同负载的归一化吞吐量
+
+    for(( i=3600;  i<= ${payload}; i=i+400 )) ;
+    do
+        echo -e "\n"${node_number}"个仿真节点"
+        ./build/mfama.exe -n ${node_number} -C ${CW} -s ${simu_time} -N ${topology_number} -l ${i}
+        cat "${node_number} nodes of simulator result.txt" | awk 'NR%4==0' | awk ' { sum += $2 };END {print sum/'${topology_number}' >> "simulator results of '${node_number}' nodes payload.txt"}' 
+        rm  "${node_number} nodes of simulator result.txt"
+        rm  "${node_number} nodes of simulator.txt"
+    done
+    
 
 else
 	echo -e "不可以执行程序,开始编译程序.....\n"

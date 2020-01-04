@@ -8,8 +8,8 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2019-07-02
- * Modified By:    詹长建 (2233930937@qq.com)
+ * Last Modified:  2019-12-31
+ * Modified By:    詹长健 (2233930937@qq.com)
  * 
  */
 #include "run.h"
@@ -85,14 +85,14 @@ int main(int argc , char* argv[])
     channel_state     = Idel;           // 信道状态  空闲
     transmission_rate = 3000/1000.0;    // 传输速率  3  kb/s
     propagate_speed   = 1500/1000.0;    // 传播速度  1500 m/s
-    propagate_range   = 1500;           // 传播范围  1500 m
+    propagate_range   = 1500;            // 传播范围  750 m
     propagate_power   = 10/1000.0;      // 传播功率  10 J/s
     receive_power     = 0.08/1000.0;    // 接收功率  80 mJ/s
     propagate_error   = 0;              // 传播误码率
     propagate_speed_jitter=50/1000.0;   // 传播速度变化 50 m/s
 
-    Rts=150;        // RTS帧
-    Cts=300;        // CTS帧
+    Rts=176;        // RTS帧
+    Cts=320;        // CTS帧
     Ack=14*8;       // 应答帧 
     Physical=0;     // 物理层头
     Mac=0;          // MAC头
@@ -100,8 +100,9 @@ int main(int argc , char* argv[])
    
     reTx_max=2;     // 最大重发次数
     slot=propagate_range/propagate_speed+Cts/transmission_rate;// 最小时隙单元 0.2s
-    cw_min=7;      // 最小退避窗口
-    cw_max=1023;    // 最大退避窗口 
+    cw_min=2;       // 最小退避窗口
+    // cw_max=16;   // 最大退避窗口 
+    cw_max=pow(2,reTx_max)*cw_min;  // 最大退避窗口 
    
     node_number =1;                 // 仿真的节点个数
     simulation_time=1200*1000.0;    // 仿真时间
@@ -205,6 +206,7 @@ int main(int argc , char* argv[])
             break;
         case 'm':
             reTx_max=atol(optarg);
+            cw_max=pow(2,reTx_max)*cw_min;  // 最大退避窗口 
             break;
         case 'o':
             slot =atof(optarg)*1000.0;//毫秒为基本单位

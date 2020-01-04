@@ -8,7 +8,7 @@
  * @brief    
  * @version  0.0.1
  * 
- * Last Modified:  2020-01-04
+ * Last Modified:  2019-12-31
  * Modified By:    詹长健 (2233930937@qq.com)
  * 
  */
@@ -242,6 +242,19 @@ int SimulatorRun(double simulation_time){
                             <<"退避窗口大小"<<node[rxpacketVector[node_number][i].from].cw_
                             <<" 最大退避窗口"<<cw_max<<std::endl;
                         #endif
+                    }else
+                    {
+                        #ifdef MY_DEBUG
+                            std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                            <<"退避窗口大小"<<node[rxpacketVector[node_number][i].from].cw_
+                            <<" 最大退避窗口"<<cw_max<<std::endl;
+                        #endif
+                        node[rxpacketVector[node_number][i].from].cw_= cw_max;
+                         #ifdef MY_DEBUG
+                            std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                            <<"退避窗口大小"<<node[rxpacketVector[node_number][i].from].cw_
+                            <<" 最大退避窗口"<<cw_max<<std::endl;
+                        #endif
                     }
                      
 
@@ -268,31 +281,100 @@ int SimulatorRun(double simulation_time){
             } 
             if(send_num > 0){   
                  
-                double duration= std::ceil((send_num*((Mac+Physical+Payload)/transmission_rate)+node[send_data_index[0]].tx_packet.delay)/slot)*slot;
+                int nums_=send_num>4?4:send_num;
+                double duration= std::ceil((nums_*((Mac+Physical+Payload)/transmission_rate)+node[send_data_index[0]].tx_packet.delay)/slot)*slot;
+                // double duration= std::ceil((send_num*((Mac+Physical+Payload)/transmission_rate)+node[send_data_index[0]].tx_packet.delay)/slot)*slot;
                 duration+=3*slot; //debug
                 #ifdef MY_DEBUG
                     std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"<<"Payload="<<Payload<<" duration/slot="<<duration/slot<<std::endl;
                 #endif
                 
-                for(uint32_t j=0; j <  send_data_index.size() ; j++){
-                    #ifdef MY_DEBUG
-                        std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
-                        <<"节点"<<send_data_index[j]<<"第"<<j+1<<"个发送数据"<<std::endl;
-                    #endif
+                if(send_data_index.size()<4){
+                    for(   uint32_t j=0; j < send_data_index.size(); j++){ //最多传输四个
+                    // for(uint32_t j=0; j <  send_data_index.size() ; j++){
+                        #ifdef MY_DEBUG
+                            std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                            <<"节点"<<send_data_index[j]<<"第"<<j+1<<"个发送数据"<<std::endl;
+                        #endif
 
-                    send_rts_index.push_back(send_data_index[j]);
-                    
-                    node[send_data_index[j]].SetAlarm(bus_clock+duration,IdleState);
-                    node[send_data_index[j]].tx_packet.state=Success;//发送成功后，方便重新初始化数据   
-                    if(j==0){
-                        node[send_data_index[j]].SendData(bus_clock+2*slot);
+                        send_rts_index.push_back(send_data_index[j]);
+                        
+                        node[send_data_index[j]].SetAlarm(bus_clock+duration,IdleState);
+                        node[send_data_index[j]].tx_packet.state=Success;//发送成功后，方便重新初始化数据   
+                        if(j==0){
+                            node[send_data_index[j]].SendData(bus_clock+2*slot);
+                        }
+                        else
+                        {
+                            node[send_data_index[j]].SendData(node[send_data_index[j-1]].tx_packet.rx_end-node[send_data_index[j]].tx_packet.delay);
+                        } 
+                        
+                        node[send_data_index[j]].cw_ = cw_min;
                     }
-                    else
-                    {
-                        node[send_data_index[j]].SendData(node[send_data_index[j-1]].tx_packet.rx_end-node[send_data_index[j]].tx_packet.delay);
-                    } 
-                    
-                    node[send_data_index[j]].cw_ = cw_min;
+                }else{
+                    for(  uint32_t j=4;j< send_data_index.size();j++){
+
+
+                        node[send_data_index[j]].work_state_=CollsionState;
+                        send_rts_index.push_back(send_data_index[j]);
+
+                        // node[rxpacketVector[node_number][j].from].SetAlarm(bus_clock+slot,IdleState);
+                        node[send_data_index[j]].SetAlarm(bus_clock+2*slot,IdleState); //进行握手
+                        
+                        int size=txpacketVector[send_data_index[j]].size()-1;
+                        if(size>=0){
+                            txpacketVector[send_data_index[j]][size].description="RTS冲突";
+                        }
+                        
+                        // todo 
+                        // 窗口问题
+                        if( node[send_data_index[j]].cw_ < cw_max){
+                            #ifdef MY_DEBUG
+                                std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                                <<"退避窗口大小"<<node[send_data_index[j]].cw_
+                                <<" 最大退避窗口"<<cw_max<<std::endl;
+                            #endif
+                            node[send_data_index[j]].cw_= node[send_data_index[j]].cw_*2;
+                            #ifdef MY_DEBUG
+                                std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                                <<"退避窗口大小"<<node[send_data_index[j]].cw_
+                                <<" 最大退避窗口"<<cw_max<<std::endl;
+                            #endif
+                        }else
+                        {
+                            #ifdef MY_DEBUG
+                                std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                                <<"退避窗口大小"<<node[send_data_index[j]].cw_
+                                <<" 最大退避窗口"<<cw_max<<std::endl;
+                            #endif
+                            node[send_data_index[j]].cw_= cw_max;
+                            #ifdef MY_DEBUG
+                                std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                                <<"退避窗口大小"<<node[send_data_index[j]].cw_
+                                <<" 最大退避窗口"<<cw_max<<std::endl;
+                            #endif
+                        }
+                        
+
+                        //数据问题 
+                        node[send_data_index[j]].tx_packet.state=Fail;
+                        #ifdef MY_DEBUG
+                            std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                            <<"RTS冲突"
+                            <<"id="<<node[send_data_index[j]].tx_packet.id
+                            <<" retransfer_number="<< node[send_data_index[j]].tx_packet.retransfer_number
+                            <<std::endl;
+                        #endif
+                        if(node[send_data_index[j]].tx_packet.retransfer_number >= reTx_max){ 
+                            #ifdef MY_DEBUG
+                                std::cout<<"DEBUG "<<__FILE__<<"/"<<__LINE__<<":"
+                                <<"抛弃的包的id为"<<node[send_data_index[j]].tx_packet.id
+                                <<std::endl;
+                            #endif
+                            node[send_data_index[j]].drop_counter_++; //记录节点抛弃包的个数
+                        }
+    
+                    }
                 }
             
             }
